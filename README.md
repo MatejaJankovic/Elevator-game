@@ -1,5 +1,5 @@
 # Lift
-
+## 2D specifikacija
 Ekran je podeljen na dve polovine. Na levoj polovini je prikazan panel sa tasterima, dok su na desnoj polovini spratovi i lift koji se kreće gore-dole i zaustavlja na spratovima. Na desnoj polovini ima 8 spratova, a lift se kreće uz desnu ivicu ekrana. Na panelu su sledeći tasteri:
 Spratovi - SU (suteren), PR (prizemlje), 1, 2, 3, 4, 5, 6 (ovim redom idu spratovi).
 Taster za zatvaranje vrata
@@ -14,3 +14,11 @@ Dok je osoba u liftu, tasteri na levoj polovini se mogu pritiskati levim klikom 
 Dok su otvorena vrata od lifta, osoba može slobodno da ulazi i izlazi u lift, ali samo 5 sekundi koliko obično traje period dok su vrata otvorena. Ako je osoba u liftu dok su vrata otvorena, može da pritisne (mišem) taster za otvaranje vrata i taj period će se produžiti za 5 sekundi (ovo je moguće uraditi samo jednom dok su vrata otvorena). U istoj situaciji može da pritisne taster za zatvaranje vrata i ona će se odmah zatvoriti (period će isteći).
 
 Kursor treba da ima izgled crnog propelera koji postane obojen u proizvoljnu boju dok je uključena ventilacija, sve dok lift ne stigne do prvog potrebnog sprata.
+
+---
+## 3D specifikacija
+Gruba specifikacija:
+Funkcionalnosti su okvirno iste kao u 2D. Spratovi i lift su modelovani u 3D sa teksturisanim podom i zidovima. Kamera prati čoveka koji se kreće po spratovima: pomera se na WASD po x i z osi i pogledom prati pomeranje miša. U liftu se na proizvoljnom zidu nalazi panel sa dugmićima isti kao u 2D i kada je miš usmeren ka bilo kom od dugmića (i ukoliko se čovek nalazi u liftu), levim klikom se to dugme aktivira (ako ima uslova, npr. vrata se neće otvoriti dok se lift kreće, odnosno isto kao u 2D). Kamera gleda u projekciji perspektive.
+
+Detaljna specifikacija:
+TBD
