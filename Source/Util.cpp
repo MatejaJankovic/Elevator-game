@@ -1,4 +1,4 @@
-#include "../Header/Util.h";
+#include "../Header/Util.h"
 
 #define _CRT_SECURE_NO_WARNINGS
 #include <fstream>
@@ -210,6 +210,192 @@ void renderColorQuad(unsigned int VAO, unsigned int shader, float x, float y, fl
     
     unsigned int uColorLoc = glGetUniformLocation(shader, "uColor");
     glUniform4f(uColorLoc, r, g, b, a);
+    
+    glBindVertexArray(VAO);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
+}
+
+// 3D Helper Functions
+void setShaderMat4(unsigned int shader, const char* name, const Mat4& mat) {
+    glUniformMatrix4fv(glGetUniformLocation(shader, name), 1, GL_FALSE, mat.m);
+}
+
+void setShaderVec3(unsigned int shader, const char* name, const Vec3& vec) {
+    glUniform3f(glGetUniformLocation(shader, name), vec.x, vec.y, vec.z);
+}
+
+void setShaderFloat(unsigned int shader, const char* name, float value) {
+    glUniform1f(glGetUniformLocation(shader, name), value);
+}
+
+unsigned int create3DQuadVAO() {
+    // 3D quad with positions, texture coords, and normals (facing +Y by default, floor)
+    float vertices[] = {
+        // positions          // tex coords  // normals
+        -0.5f, 0.0f, -0.5f,   0.0f, 0.0f,    0.0f, 1.0f, 0.0f,
+         0.5f, 0.0f, -0.5f,   1.0f, 0.0f,    0.0f, 1.0f, 0.0f,
+         0.5f, 0.0f,  0.5f,   1.0f, 1.0f,    0.0f, 1.0f, 0.0f,
+        -0.5f, 0.0f,  0.5f,   0.0f, 1.0f,    0.0f, 1.0f, 0.0f
+    };
+    unsigned int indices[] = { 0, 1, 2, 2, 3, 0 };
+
+    unsigned int VAO, VBO, EBO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    // Position
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    // Texture coords
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    // Normals
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));
+    glEnableVertexAttribArray(2);
+
+    glBindVertexArray(0);
+    return VAO;
+}
+
+unsigned int createWallVAO() {
+    // Wall quad facing -Z
+    float vertices[] = {
+        // positions          // tex coords  // normals
+        -0.5f, -0.5f, 0.0f,   0.0f, 0.0f,    0.0f, 0.0f, 1.0f,
+         0.5f, -0.5f, 0.0f,   1.0f, 0.0f,    0.0f, 0.0f, 1.0f,
+         0.5f,  0.5f, 0.0f,   1.0f, 1.0f,    0.0f, 0.0f, 1.0f,
+        -0.5f,  0.5f, 0.0f,   0.0f, 1.0f,    0.0f, 0.0f, 1.0f
+    };
+    unsigned int indices[] = { 0, 1, 2, 2, 3, 0 };
+
+    unsigned int VAO, VBO, EBO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));
+    glEnableVertexAttribArray(2);
+
+    glBindVertexArray(0);
+    return VAO;
+}
+
+unsigned int createCubeVAO() {
+    float vertices[] = {
+        // Back face
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,  0.0f, 0.0f, -1.0f,
+         0.5f, -0.5f, -0.5f,  1.0f, 0.0f,  0.0f, 0.0f, -1.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,  0.0f, 0.0f, -1.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,  0.0f, 0.0f, -1.0f,
+        // Front face
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,  0.0f, 0.0f, 1.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,  0.0f, 0.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,  0.0f, 0.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,  0.0f, 0.0f, 1.0f,
+        // Left face
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,  -1.0f, 0.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f,  1.0f, 0.0f,  -1.0f, 0.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  1.0f, 1.0f,  -1.0f, 0.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,  -1.0f, 0.0f, 0.0f,
+        // Right face
+         0.5f, -0.5f, -0.5f,  0.0f, 0.0f,  1.0f, 0.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,  1.0f, 0.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,  1.0f, 0.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,  0.0f, 1.0f,  1.0f, 0.0f, 0.0f,
+        // Bottom face
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,  0.0f, -1.0f, 0.0f,
+         0.5f, -0.5f, -0.5f,  1.0f, 0.0f,  0.0f, -1.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 1.0f,  0.0f, -1.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 1.0f,  0.0f, -1.0f, 0.0f,
+        // Top face
+        -0.5f,  0.5f, -0.5f,  0.0f, 0.0f,  0.0f, 1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 0.0f,  0.0f, 1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,  0.0f, 1.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,  0.0f, 1.0f, 0.0f
+    };
+    
+    unsigned int indices[] = {
+        0, 1, 2, 2, 3, 0,       // back
+        4, 5, 6, 6, 7, 4,       // front
+        8, 9, 10, 10, 11, 8,    // left
+        12, 13, 14, 14, 15, 12, // right
+        16, 17, 18, 18, 19, 16, // bottom
+        20, 21, 22, 22, 23, 20  // top
+    };
+
+    unsigned int VAO, VBO, EBO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));
+    glEnableVertexAttribArray(2);
+
+    glBindVertexArray(0);
+    return VAO;
+}
+
+void render3DQuad(unsigned int VAO, unsigned int texture, unsigned int shader, const Mat4& model, const Mat4& view, const Mat4& projection, const Vec3& lightPos, const Vec3& viewPos) {
+    glUseProgram(shader);
+    
+    setShaderMat4(shader, "uModel", model);
+    setShaderMat4(shader, "uView", view);
+    setShaderMat4(shader, "uProjection", projection);
+    setShaderVec3(shader, "uLightPos", lightPos);
+    setShaderVec3(shader, "uViewPos", viewPos);
+    setShaderVec3(shader, "uLightColor", Vec3(1.0f, 1.0f, 1.0f));
+    setShaderFloat(shader, "uAmbientStrength", 0.4f);
+    setShaderFloat(shader, "uAlpha", 1.0f);
+    
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    
+    glBindVertexArray(VAO);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
+}
+
+void render3DColorQuad(unsigned int VAO, unsigned int shader, const Mat4& model, const Mat4& view, const Mat4& projection, const Vec3& lightPos, float r, float g, float b, float a) {
+    glUseProgram(shader);
+    
+    setShaderMat4(shader, "uModel", model);
+    setShaderMat4(shader, "uView", view);
+    setShaderMat4(shader, "uProjection", projection);
+    setShaderVec3(shader, "uLightPos", lightPos);
+    setShaderVec3(shader, "uLightColor", Vec3(1.0f, 1.0f, 1.0f));
+    setShaderFloat(shader, "uAmbientStrength", 0.4f);
+    glUniform4f(glGetUniformLocation(shader, "uColor"), r, g, b, a);
     
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);

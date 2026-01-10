@@ -36,6 +36,9 @@
     <None Include="Shaders\basic.frag" />
     <None Include="Shaders\color.frag" />
     <None Include="Shaders\cursor.frag" />
+    <None Include="Shaders\3d.vert" />
+    <None Include="Shaders\3d.frag" />
+    <None Include="Shaders\3d_color.frag" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\..\..\OneDrive\Radna površina\cetvrtiSprat.jpg">

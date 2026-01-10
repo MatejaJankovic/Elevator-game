@@ -133,6 +133,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="Shaders\3d.frag" />
+    <None Include="Shaders\3d.vert" />
+    <None Include="Shaders\3d_color.frag" />
     <None Include="Shaders\basic.frag" />
     <None Include="Shaders\basic.vert" />
     <None Include="Shaders\color.frag" />
