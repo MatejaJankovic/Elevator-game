@@ -24,14 +24,17 @@ void main()
     // Calculate attenuation (light falloff with distance)
     float attenuation = 1.0 / (uConstant + uLinear * distance + uQuadratic * distance * distance);
     
-    // Ambient - minimal ambient for realistic dark areas
+    // Ambient - moderate base lighting
     vec3 ambient = uAmbientStrength * uLightColor;
     
-    // Diffuse
+    // Diffuse with strong intensity for bright areas near light
     vec3 norm = normalize(Normal);
     vec3 lightDir = normalize(uLightPos - FragPos);
     float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse = diff * uLightColor * attenuation;
+    
+    // Strong intensity boost for visible light source effect
+    float intensityBoost = 3.5;
+    vec3 diffuse = diff * uLightColor * attenuation * intensityBoost;
     
     vec3 result = (ambient + diffuse) * uColor.rgb;
     FragColor = vec4(result, uColor.a);

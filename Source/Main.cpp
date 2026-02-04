@@ -98,7 +98,7 @@ void addFloorToQueue(Elevator& elevator, int floor);
 
 int main()
 {
-    if (!glfwInit()) return endProgram("GLFW nije uspeo da se inicijalizuje.");
+    if (!glfwInit()) return endProgram("GLFW nije uspelo da se inicijalizuje.");
     
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -249,11 +249,12 @@ int main()
     Mat4 projection = Mat4::perspective(PI / 4.0f, aspect, 0.1f, 200.0f);
 
     // Light attenuation parameters for realistic point light falloff
+    // Higher values = faster falloff = more dramatic difference between center and corners
     float lightConstant = 1.0f;
-    float lightLinear = 0.09f;
-    float lightQuadratic = 0.032f;
+    float lightLinear = 0.14f;      // Increased for more noticeable falloff
+    float lightQuadratic = 0.07f;   // Increased for stronger distance-squared falloff
 
-    glClearColor(0.1f, 0.1f, 0.15f, 1.0f);
+    glClearColor(0.05f, 0.05f, 0.08f, 1.0f);  // Darker background
 
     while (!glfwWindowShouldClose(window))
     {
@@ -287,7 +288,7 @@ int main()
                 setShaderVec3(shader3D, "uLightPos", floorLightPos);
                 setShaderVec3(shader3D, "uViewPos", camera.position);
                 setShaderVec3(shader3D, "uLightColor", Vec3(1.0f, 0.95f, 0.9f));  // Warm white light
-                setShaderFloat(shader3D, "uAmbientStrength", 0.15f);  // Low ambient for darker corners
+                setShaderFloat(shader3D, "uAmbientStrength", 0.25f);  // Moderate ambient for visible corners
                 setShaderFloat(shader3D, "uConstant", lightConstant);
                 setShaderFloat(shader3D, "uLinear", lightLinear);
                 setShaderFloat(shader3D, "uQuadratic", lightQuadratic);
@@ -399,7 +400,7 @@ int main()
                     setShaderVec3(shader3D, "uLightPos", floorLightPos);
                     setShaderVec3(shader3D, "uViewPos", camera.position);
                     setShaderVec3(shader3D, "uLightColor", Vec3(1.0f, 0.95f, 0.9f));
-                    setShaderFloat(shader3D, "uAmbientStrength", 0.15f);
+                    setShaderFloat(shader3D, "uAmbientStrength", 0.25f);  // Match floor ambient
                     setShaderFloat(shader3D, "uConstant", lightConstant);
                     setShaderFloat(shader3D, "uLinear", lightLinear);
                     setShaderFloat(shader3D, "uQuadratic", lightQuadratic);
