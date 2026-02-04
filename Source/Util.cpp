@@ -164,10 +164,11 @@ GLFWcursor* loadImageToCursor(const char* filePath) {
 
 void setTextureFiltering(unsigned int texture) {
     glBindTexture(GL_TEXTURE_2D, texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glGenerateMipmap(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
@@ -439,31 +440,83 @@ OBJModel loadOBJModel(const char* objPath, const char* texturePath) {
             texCoords.push_back(v);
         }
         else if (strcmp(lineHeader, "f") == 0) {
-            unsigned int vertexIndex[3], uvIndex[3], normalIndex[3];
-            int matches = fscanf(file, "%d/%d/%d %d/%d/%d %d/%d/%d\n",
+            char line[256];
+            fgets(line, sizeof(line), file);
+            
+            unsigned int vertexIndex[4], uvIndex[4], normalIndex[4];
+            
+            // Try to read as quad (4 vertices) first
+            int matches = sscanf(line, "%d/%d/%d %d/%d/%d %d/%d/%d %d/%d/%d",
                 &vertexIndex[0], &uvIndex[0], &normalIndex[0],
                 &vertexIndex[1], &uvIndex[1], &normalIndex[1],
-                &vertexIndex[2], &uvIndex[2], &normalIndex[2]);
+                &vertexIndex[2], &uvIndex[2], &normalIndex[2],
+                &vertexIndex[3], &uvIndex[3], &normalIndex[3]);
             
-            if (matches == 9) {
-                for (int i = 0; i < 3; i++) {
-                    Vec3 pos = positions[vertexIndex[i] - 1];
-                    vertices.push_back(pos.x);
-                    vertices.push_back(pos.y);
-                    vertices.push_back(pos.z);
-                    
-                    if (uvIndex[i] - 1 < texCoords.size() / 2) {
-                        vertices.push_back(texCoords[(uvIndex[i] - 1) * 2]);
-                        vertices.push_back(texCoords[(uvIndex[i] - 1) * 2 + 1]);
-                    } else {
-                        vertices.push_back(0.0f);
-                        vertices.push_back(0.0f);
+            if (matches == 12) {
+                // Quad face - split into two triangles (0,1,2) and (0,2,3)
+                int triangles[2][3] = {{0, 1, 2}, {0, 2, 3}};
+                
+                for (int t = 0; t < 2; t++) {
+                    for (int i = 0; i < 3; i++) {
+                        int idx = triangles[t][i];
+                        Vec3 pos = positions[vertexIndex[idx] - 1];
+                        vertices.push_back(pos.x);
+                        vertices.push_back(pos.y);
+                        vertices.push_back(pos.z);
+                        
+                        if (uvIndex[idx] - 1 < texCoords.size() / 2) {
+                            vertices.push_back(texCoords[(uvIndex[idx] - 1) * 2]);
+                            vertices.push_back(texCoords[(uvIndex[idx] - 1) * 2 + 1]);
+                        } else {
+                            vertices.push_back(0.0f);
+                            vertices.push_back(0.0f);
+                        }
+                        
+                        if (normalIndex[idx] - 1 < normals.size()) {
+                            Vec3 norm = normals[normalIndex[idx] - 1];
+                            vertices.push_back(norm.x);
+                            vertices.push_back(norm.y);
+                            vertices.push_back(norm.z);
+                        } else {
+                            vertices.push_back(0.0f);
+                            vertices.push_back(1.0f);
+                            vertices.push_back(0.0f);
+                        }
                     }
-                    
-                    Vec3 norm = normals[normalIndex[i] - 1];
-                    vertices.push_back(norm.x);
-                    vertices.push_back(norm.y);
-                    vertices.push_back(norm.z);
+                }
+            } else {
+                // Try reading as triangle (3 vertices)
+                matches = sscanf(line, "%d/%d/%d %d/%d/%d %d/%d/%d",
+                    &vertexIndex[0], &uvIndex[0], &normalIndex[0],
+                    &vertexIndex[1], &uvIndex[1], &normalIndex[1],
+                    &vertexIndex[2], &uvIndex[2], &normalIndex[2]);
+                
+                if (matches == 9) {
+                    for (int i = 0; i < 3; i++) {
+                        Vec3 pos = positions[vertexIndex[i] - 1];
+                        vertices.push_back(pos.x);
+                        vertices.push_back(pos.y);
+                        vertices.push_back(pos.z);
+                        
+                        if (uvIndex[i] - 1 < texCoords.size() / 2) {
+                            vertices.push_back(texCoords[(uvIndex[i] - 1) * 2]);
+                            vertices.push_back(texCoords[(uvIndex[i] - 1) * 2 + 1]);
+                        } else {
+                            vertices.push_back(0.0f);
+                            vertices.push_back(0.0f);
+                        }
+                        
+                        if (normalIndex[i] - 1 < normals.size()) {
+                            Vec3 norm = normals[normalIndex[i] - 1];
+                            vertices.push_back(norm.x);
+                            vertices.push_back(norm.y);
+                            vertices.push_back(norm.z);
+                        } else {
+                            vertices.push_back(0.0f);
+                            vertices.push_back(1.0f);
+                            vertices.push_back(0.0f);
+                        }
+                    }
                 }
             }
         }

@@ -158,6 +158,7 @@ int main()
     unsigned int elevatorDoorClosedTex = loadImageToTexture("Resources/zatvorenLift.png");
     unsigned int elevatorDoorOpenTex = loadImageToTexture("Resources/otvorenLift.png");
     unsigned int crosshairTex = loadImageToTexture("Resources/kursor.png");
+    unsigned int studentInfoTex = loadImageToTexture("Resources/studentt.png");
     
     unsigned int podTex = loadImageToTexture("Resources/pod.png");
     unsigned int plafonTex = loadImageToTexture("Resources/plafon.jpg");
@@ -166,6 +167,7 @@ int main()
     setTextureFiltering(elevatorDoorClosedTex);
     setTextureFiltering(elevatorDoorOpenTex);
     setTextureFiltering(crosshairTex);
+    setTextureFiltering(studentInfoTex);
     setTextureFiltering(podTex);
     setTextureFiltering(plafonTex);
 
@@ -188,6 +190,10 @@ int main()
                                    "Resources/indoor-plant-2/source/plant_2/plant_2_tex.png");
     OBJModel plant3 = loadOBJModel("Resources/indoor-plant-3/source/plant_3/plant_3.obj",
                                    "Resources/indoor-plant-3/source/plant_3/plant_3_tex.png");
+
+    // Load 3D ceiling light model
+    OBJModel ceilingLight = loadOBJModel("Resources/ceiling-light/source/FluorescentLight/FluorescentLight.obj",
+                                        "Resources/ceiling-light/textures/FluorescentLight_Base_Color.png");
 
     // Create button panel - 2 COLUMNS of 6 buttons each, SMALLER size
     std::vector<Button3D> buttons(12);
@@ -339,6 +345,37 @@ int main()
                 Mat4 plant3Model = Mat4::translate(Vec3(-FLOOR_WIDTH/2 + cornerOffset, floorY, -FLOOR_DEPTH/2 + cornerOffset)) *
                                    Mat4::scale(Vec3(plantScale, plantScale, plantScale));
                 renderOBJModel(plant3, shader3D, plant3Model, view, projection, lightPos, camera.position);
+                
+                // ========== RENDER CEILING LIGHT (centered on ceiling) ==========
+                float lightScale = 1.2f;
+                Mat4 lightModel = Mat4::translate(Vec3(0.0f, floorY + FLOOR_HEIGHT - 1.0f, 0.0f)) *
+                                 Mat4::rotateY(PI/2) *
+                                 Mat4::scale(Vec3(lightScale, lightScale, lightScale));
+                
+                // Disable blending for opaque rendering of the lamp
+                glDisable(GL_BLEND);
+                
+                glUseProgram(shader3D);
+                setShaderMat4(shader3D, "uModel", lightModel);
+                setShaderMat4(shader3D, "uView", view);
+                setShaderMat4(shader3D, "uProjection", projection);
+                setShaderVec3(shader3D, "uLightPos", lightPos);
+                setShaderVec3(shader3D, "uViewPos", camera.position);
+                setShaderVec3(shader3D, "uLightColor", Vec3(1.0f, 1.0f, 1.0f));
+                setShaderFloat(shader3D, "uAmbientStrength", 0.8f);
+                setShaderFloat(shader3D, "uAlpha", 1.0f);
+                
+                if (ceilingLight.texture > 0) {
+                    glActiveTexture(GL_TEXTURE0);
+                    glBindTexture(GL_TEXTURE_2D, ceilingLight.texture);
+                }
+                
+                glBindVertexArray(ceilingLight.VAO);
+                glDrawArrays(GL_TRIANGLES, 0, ceilingLight.vertexCount);
+                glBindVertexArray(0);
+                
+                // Re-enable blending for other objects
+                glEnable(GL_BLEND);
                 
                 // ========== RENDER ELEVATOR EXTERIOR (cube in corner) ==========
                 if (elevator.currentFloor == person.currentFloor) {
@@ -535,6 +572,14 @@ int main()
             // Render crosshair (2D overlay)
             glDisable(GL_DEPTH_TEST);
             renderQuad(VAO2D, crosshairTex, shader2D, 0.0f, 0.0f, 0.05f, 0.05f * aspect, 0.7f);
+            
+            // Render student info in bottom-right corner (200x80 pixels)
+            float infoWidth = 200.0f / (float)winWidth * 2.0f;   // Convert pixels to NDC
+            float infoHeight = 80.0f / (float)winHeight * 2.0f;  // Convert pixels to NDC
+            float infoPosX = 1.0f - infoWidth / 2.0f - 0.02f;    // Right side with small margin
+            float infoPosY = -1.0f + infoHeight / 2.0f + 0.02f;  // Bottom side with small margin
+            renderQuad(VAO2D, studentInfoTex, shader2D, infoPosX, infoPosY, infoWidth, infoHeight, 1.0f);
+            
             glEnable(GL_DEPTH_TEST);
 
             glfwSwapBuffers(window);
