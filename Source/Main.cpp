@@ -248,7 +248,10 @@ int main()
     float aspect = (float)winWidth / (float)winHeight;
     Mat4 projection = Mat4::perspective(PI / 4.0f, aspect, 0.1f, 200.0f);
 
-    Vec3 lightPos(0.0f, 50.0f, 0.0f);
+    // Light attenuation parameters for realistic point light falloff
+    float lightConstant = 1.0f;
+    float lightLinear = 0.09f;
+    float lightQuadratic = 0.032f;
 
     glClearColor(0.1f, 0.1f, 0.15f, 1.0f);
 
@@ -275,13 +278,19 @@ int main()
                 int floor = person.currentFloor;
                 float floorY = floor * FLOOR_HEIGHT;
                 
+                // Floor lamp position - centered on ceiling, slightly below the actual lamp model
+                Vec3 floorLightPos(0.0f, floorY + FLOOR_HEIGHT - 1.5f, 0.0f);
+                
                 glUseProgram(shader3D);
                 setShaderMat4(shader3D, "uView", view);
                 setShaderMat4(shader3D, "uProjection", projection);
-                setShaderVec3(shader3D, "uLightPos", lightPos);
+                setShaderVec3(shader3D, "uLightPos", floorLightPos);
                 setShaderVec3(shader3D, "uViewPos", camera.position);
-                setShaderVec3(shader3D, "uLightColor", Vec3(1.0f, 1.0f, 1.0f));
-                setShaderFloat(shader3D, "uAmbientStrength", 0.6f);
+                setShaderVec3(shader3D, "uLightColor", Vec3(1.0f, 0.95f, 0.9f));  // Warm white light
+                setShaderFloat(shader3D, "uAmbientStrength", 0.15f);  // Low ambient for darker corners
+                setShaderFloat(shader3D, "uConstant", lightConstant);
+                setShaderFloat(shader3D, "uLinear", lightLinear);
+                setShaderFloat(shader3D, "uQuadratic", lightQuadratic);
                 setShaderFloat(shader3D, "uAlpha", 1.0f);
                 glActiveTexture(GL_TEXTURE0);
                 
@@ -334,17 +343,17 @@ int main()
                 // Front-left corner (plant 1)
                 Mat4 plant1Model = Mat4::translate(Vec3(-FLOOR_WIDTH/2 + cornerOffset, floorY, FLOOR_DEPTH/2 - cornerOffset)) *
                                    Mat4::scale(Vec3(plantScale, plantScale, plantScale));
-                renderOBJModel(plant1, shader3D, plant1Model, view, projection, lightPos, camera.position);
+                renderOBJModel(plant1, shader3D, plant1Model, view, projection, floorLightPos, camera.position);
                 
                 // Front-right corner (plant 2) - NOT elevator corner
                 Mat4 plant2Model = Mat4::translate(Vec3(FLOOR_WIDTH/2 - cornerOffset, floorY, FLOOR_DEPTH/2 - cornerOffset)) *
                                    Mat4::scale(Vec3(plantScale, plantScale, plantScale));
-                renderOBJModel(plant2, shader3D, plant2Model, view, projection, lightPos, camera.position);
+                renderOBJModel(plant2, shader3D, plant2Model, view, projection, floorLightPos, camera.position);
                 
                 // Back-left corner (plant 3) - NOT elevator corner which is back-right
                 Mat4 plant3Model = Mat4::translate(Vec3(-FLOOR_WIDTH/2 + cornerOffset, floorY, -FLOOR_DEPTH/2 + cornerOffset)) *
                                    Mat4::scale(Vec3(plantScale, plantScale, plantScale));
-                renderOBJModel(plant3, shader3D, plant3Model, view, projection, lightPos, camera.position);
+                renderOBJModel(plant3, shader3D, plant3Model, view, projection, floorLightPos, camera.position);
                 
                 // ========== RENDER CEILING LIGHT (centered on ceiling) ==========
                 float lightScale = 1.2f;
@@ -359,10 +368,13 @@ int main()
                 setShaderMat4(shader3D, "uModel", lightModel);
                 setShaderMat4(shader3D, "uView", view);
                 setShaderMat4(shader3D, "uProjection", projection);
-                setShaderVec3(shader3D, "uLightPos", lightPos);
+                setShaderVec3(shader3D, "uLightPos", floorLightPos);
                 setShaderVec3(shader3D, "uViewPos", camera.position);
-                setShaderVec3(shader3D, "uLightColor", Vec3(1.0f, 1.0f, 1.0f));
-                setShaderFloat(shader3D, "uAmbientStrength", 0.8f);
+                setShaderVec3(shader3D, "uLightColor", Vec3(1.0f, 0.95f, 0.9f));
+                setShaderFloat(shader3D, "uAmbientStrength", 0.9f);  // Lamp itself is bright
+                setShaderFloat(shader3D, "uConstant", lightConstant);
+                setShaderFloat(shader3D, "uLinear", lightLinear);
+                setShaderFloat(shader3D, "uQuadratic", lightQuadratic);
                 setShaderFloat(shader3D, "uAlpha", 1.0f);
                 
                 if (ceilingLight.texture > 0) {
@@ -373,7 +385,7 @@ int main()
                 glBindVertexArray(ceilingLight.VAO);
                 glDrawArrays(GL_TRIANGLES, 0, ceilingLight.vertexCount);
                 glBindVertexArray(0);
-                
+
                 // Re-enable blending for other objects
                 glEnable(GL_BLEND);
                 
@@ -384,10 +396,13 @@ int main()
                     glUseProgram(shader3D);
                     setShaderMat4(shader3D, "uView", view);
                     setShaderMat4(shader3D, "uProjection", projection);
-                    setShaderVec3(shader3D, "uLightPos", lightPos);
+                    setShaderVec3(shader3D, "uLightPos", floorLightPos);
                     setShaderVec3(shader3D, "uViewPos", camera.position);
-                    setShaderVec3(shader3D, "uLightColor", Vec3(1.0f, 1.0f, 1.0f));
-                    setShaderFloat(shader3D, "uAmbientStrength", 0.6f);
+                    setShaderVec3(shader3D, "uLightColor", Vec3(1.0f, 0.95f, 0.9f));
+                    setShaderFloat(shader3D, "uAmbientStrength", 0.15f);
+                    setShaderFloat(shader3D, "uConstant", lightConstant);
+                    setShaderFloat(shader3D, "uLinear", lightLinear);
+                    setShaderFloat(shader3D, "uQuadratic", lightQuadratic);
                     setShaderFloat(shader3D, "uAlpha", 1.0f);
                     glActiveTexture(GL_TEXTURE0);
                     
@@ -443,13 +458,19 @@ int main()
                 // ========== RENDER ELEVATOR INTERIOR ==========
                 float cabinY = elevator.y + ELEVATOR_SIZE/2;
                 
+                // Elevator interior lamp position - centered on elevator ceiling
+                Vec3 elevatorLightPos(ELEVATOR_X, elevator.y + ELEVATOR_SIZE - 0.5f, ELEVATOR_Z);
+                
                 glUseProgram(shader3D);
                 setShaderMat4(shader3D, "uView", view);
                 setShaderMat4(shader3D, "uProjection", projection);
-                setShaderVec3(shader3D, "uLightPos", Vec3(ELEVATOR_X, elevator.y + ELEVATOR_SIZE - 0.5f, ELEVATOR_Z));
+                setShaderVec3(shader3D, "uLightPos", elevatorLightPos);
                 setShaderVec3(shader3D, "uViewPos", camera.position);
-                setShaderVec3(shader3D, "uLightColor", Vec3(1.0f, 1.0f, 1.0f));
-                setShaderFloat(shader3D, "uAmbientStrength", 0.8f);
+                setShaderVec3(shader3D, "uLightColor", Vec3(1.0f, 0.95f, 0.9f));  // Warm white light
+                setShaderFloat(shader3D, "uAmbientStrength", 0.2f);  // Low ambient for realistic lighting
+                setShaderFloat(shader3D, "uConstant", lightConstant);
+                setShaderFloat(shader3D, "uLinear", 0.14f);  // Slightly stronger falloff for smaller space
+                setShaderFloat(shader3D, "uQuadratic", 0.07f);
                 setShaderFloat(shader3D, "uAlpha", 1.0f);
                 glActiveTexture(GL_TEXTURE0);
                 
@@ -504,6 +525,40 @@ int main()
                 glBindTexture(GL_TEXTURE_2D, elevatorWallTex);
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
                 
+                // ========== RENDER CEILING LIGHT IN ELEVATOR (centered on ceiling, half scale) ==========
+                float elevatorLightScale = 0.6f;  // Half of the 1.2f used for floor lights
+                Mat4 elevatorLightModel = Mat4::translate(Vec3(ELEVATOR_X, elevator.y + ELEVATOR_SIZE - 0.5f, ELEVATOR_Z)) *
+                                         Mat4::rotateY(PI/2) *
+                                         Mat4::scale(Vec3(elevatorLightScale, elevatorLightScale, elevatorLightScale));
+                
+                // Disable blending for opaque rendering of the lamp
+                glDisable(GL_BLEND);
+                
+                glUseProgram(shader3D);
+                setShaderMat4(shader3D, "uModel", elevatorLightModel);
+                setShaderMat4(shader3D, "uView", view);
+                setShaderMat4(shader3D, "uProjection", projection);
+                setShaderVec3(shader3D, "uLightPos", elevatorLightPos);
+                setShaderVec3(shader3D, "uViewPos", camera.position);
+                setShaderVec3(shader3D, "uLightColor", Vec3(1.0f, 0.95f, 0.9f));
+                setShaderFloat(shader3D, "uAmbientStrength", 0.9f);  // Lamp itself is bright
+                setShaderFloat(shader3D, "uConstant", lightConstant);
+                setShaderFloat(shader3D, "uLinear", 0.14f);
+                setShaderFloat(shader3D, "uQuadratic", 0.07f);
+                setShaderFloat(shader3D, "uAlpha", 1.0f);
+                
+                if (ceilingLight.texture > 0) {
+                    glActiveTexture(GL_TEXTURE0);
+                    glBindTexture(GL_TEXTURE_2D, ceilingLight.texture);
+                }
+                
+                glBindVertexArray(ceilingLight.VAO);
+                glDrawArrays(GL_TRIANGLES, 0, ceilingLight.vertexCount);
+                glBindVertexArray(0);
+
+                // Re-enable blending for other objects
+                glEnable(GL_BLEND);
+                
                 // ========== RENDER BUTTONS ON LEFT WALL ==========
                 glBindVertexArray(wallVAO);
                 
@@ -519,10 +574,13 @@ int main()
                     setShaderMat4(shader3D, "uModel", btnModel);
                     setShaderMat4(shader3D, "uView", view);
                     setShaderMat4(shader3D, "uProjection", projection);
-                    setShaderVec3(shader3D, "uLightPos", Vec3(ELEVATOR_X, elevator.y + ELEVATOR_SIZE, ELEVATOR_Z));
+                    setShaderVec3(shader3D, "uLightPos", elevatorLightPos);
                     setShaderVec3(shader3D, "uViewPos", camera.position);
-                    setShaderVec3(shader3D, "uLightColor", Vec3(1.0f, 1.0f, 1.0f));
-                    setShaderFloat(shader3D, "uAmbientStrength", 0.9f);
+                    setShaderVec3(shader3D, "uLightColor", Vec3(1.0f, 0.95f, 0.9f));
+                    setShaderFloat(shader3D, "uAmbientStrength", 0.3f);
+                    setShaderFloat(shader3D, "uConstant", lightConstant);
+                    setShaderFloat(shader3D, "uLinear", 0.14f);
+                    setShaderFloat(shader3D, "uQuadratic", 0.07f);
                     setShaderFloat(shader3D, "uAlpha", 1.0f);
                     glBindTexture(GL_TEXTURE_2D, btn.texture);
                     glBindVertexArray(wallVAO);
@@ -533,9 +591,12 @@ int main()
                         glUseProgram(colorShader3D);
                         setShaderMat4(colorShader3D, "uView", view);
                         setShaderMat4(colorShader3D, "uProjection", projection);
-                        setShaderVec3(colorShader3D, "uLightPos", Vec3(ELEVATOR_X, elevator.y + ELEVATOR_SIZE, ELEVATOR_Z));
-                        setShaderVec3(colorShader3D, "uLightColor", Vec3(1.0f, 1.0f, 1.0f));
-                        setShaderFloat(colorShader3D, "uAmbientStrength", 0.9f);
+                        setShaderVec3(colorShader3D, "uLightPos", elevatorLightPos);
+                        setShaderVec3(colorShader3D, "uLightColor", Vec3(1.0f, 0.95f, 0.9f));
+                        setShaderFloat(colorShader3D, "uAmbientStrength", 0.3f);
+                        setShaderFloat(colorShader3D, "uConstant", lightConstant);
+                        setShaderFloat(colorShader3D, "uLinear", 0.14f);
+                        setShaderFloat(colorShader3D, "uQuadratic", 0.07f);
                         glUniform4f(glGetUniformLocation(colorShader3D, "uColor"), 1.0f, 1.0f, 0.0f, 1.0f);
                         glBindVertexArray(wallVAO);
                         

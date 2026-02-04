@@ -560,8 +560,11 @@ void renderOBJModel(const OBJModel& model, unsigned int shader, const Mat4& mode
     setShaderMat4(shader, "uProjection", projection);
     setShaderVec3(shader, "uLightPos", lightPos);
     setShaderVec3(shader, "uViewPos", viewPos);
-    setShaderVec3(shader, "uLightColor", Vec3(1.0f, 1.0f, 1.0f));
-    setShaderFloat(shader, "uAmbientStrength", 0.6f);
+    setShaderVec3(shader, "uLightColor", Vec3(1.0f, 0.95f, 0.9f));  // Warm white light
+    setShaderFloat(shader, "uAmbientStrength", 0.15f);  // Low ambient for realistic shadows
+    setShaderFloat(shader, "uConstant", 1.0f);
+    setShaderFloat(shader, "uLinear", 0.09f);
+    setShaderFloat(shader, "uQuadratic", 0.032f);
     setShaderFloat(shader, "uAlpha", 1.0f);
     
     if (model.texture > 0) {
