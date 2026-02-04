@@ -1,6 +1,6 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include "../Header/Util.h"
 
-#define _CRT_SECURE_NO_WARNINGS
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -399,5 +399,124 @@ void render3DColorQuad(unsigned int VAO, unsigned int shader, const Mat4& model,
     
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
+}
+
+OBJModel loadOBJModel(const char* objPath, const char* texturePath) {
+    OBJModel model;
+    model.VAO = 0;
+    model.VBO = 0;
+    model.vertexCount = 0;
+    model.texture = 0;
+
+    std::vector<float> vertices;
+    std::vector<Vec3> positions;
+    std::vector<Vec3> normals;
+    std::vector<float> texCoords;
+    
+    FILE* file = fopen(objPath, "r");
+    if (!file) {
+        std::cout << "Failed to open OBJ file: " << objPath << std::endl;
+        return model;
+    }
+
+    char lineHeader[128];
+    while (fscanf(file, "%s", lineHeader) != EOF) {
+        if (strcmp(lineHeader, "v") == 0) {
+            Vec3 vertex;
+            fscanf(file, "%f %f %f\n", &vertex.x, &vertex.y, &vertex.z);
+            positions.push_back(vertex);
+        }
+        else if (strcmp(lineHeader, "vn") == 0) {
+            Vec3 normal;
+            fscanf(file, "%f %f %f\n", &normal.x, &normal.y, &normal.z);
+            normals.push_back(normal);
+        }
+        else if (strcmp(lineHeader, "vt") == 0) {
+            float u, v;
+            fscanf(file, "%f %f\n", &u, &v);
+            texCoords.push_back(u);
+            texCoords.push_back(v);
+        }
+        else if (strcmp(lineHeader, "f") == 0) {
+            unsigned int vertexIndex[3], uvIndex[3], normalIndex[3];
+            int matches = fscanf(file, "%d/%d/%d %d/%d/%d %d/%d/%d\n",
+                &vertexIndex[0], &uvIndex[0], &normalIndex[0],
+                &vertexIndex[1], &uvIndex[1], &normalIndex[1],
+                &vertexIndex[2], &uvIndex[2], &normalIndex[2]);
+            
+            if (matches == 9) {
+                for (int i = 0; i < 3; i++) {
+                    Vec3 pos = positions[vertexIndex[i] - 1];
+                    vertices.push_back(pos.x);
+                    vertices.push_back(pos.y);
+                    vertices.push_back(pos.z);
+                    
+                    if (uvIndex[i] - 1 < texCoords.size() / 2) {
+                        vertices.push_back(texCoords[(uvIndex[i] - 1) * 2]);
+                        vertices.push_back(texCoords[(uvIndex[i] - 1) * 2 + 1]);
+                    } else {
+                        vertices.push_back(0.0f);
+                        vertices.push_back(0.0f);
+                    }
+                    
+                    Vec3 norm = normals[normalIndex[i] - 1];
+                    vertices.push_back(norm.x);
+                    vertices.push_back(norm.y);
+                    vertices.push_back(norm.z);
+                }
+            }
+        }
+    }
+    fclose(file);
+
+    model.vertexCount = vertices.size() / 8;
+
+    glGenVertexArrays(1, &model.VAO);
+    glGenBuffers(1, &model.VBO);
+
+    glBindVertexArray(model.VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, model.VBO);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));
+    glEnableVertexAttribArray(2);
+
+    glBindVertexArray(0);
+
+    if (texturePath) {
+        model.texture = loadImageToTexture(texturePath);
+        setTextureFiltering(model.texture);
+    }
+
+    std::cout << "Loaded OBJ model: " << objPath << " with " << model.vertexCount << " vertices" << std::endl;
+    return model;
+}
+
+void renderOBJModel(const OBJModel& model, unsigned int shader, const Mat4& modelMatrix, const Mat4& view, const Mat4& projection, const Vec3& lightPos, const Vec3& viewPos) {
+    if (model.VAO == 0) return;
+
+    glUseProgram(shader);
+    
+    setShaderMat4(shader, "uModel", modelMatrix);
+    setShaderMat4(shader, "uView", view);
+    setShaderMat4(shader, "uProjection", projection);
+    setShaderVec3(shader, "uLightPos", lightPos);
+    setShaderVec3(shader, "uViewPos", viewPos);
+    setShaderVec3(shader, "uLightColor", Vec3(1.0f, 1.0f, 1.0f));
+    setShaderFloat(shader, "uAmbientStrength", 0.6f);
+    setShaderFloat(shader, "uAlpha", 1.0f);
+    
+    if (model.texture > 0) {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, model.texture);
+    }
+    
+    glBindVertexArray(model.VAO);
+    glDrawArrays(GL_TRIANGLES, 0, model.vertexCount);
     glBindVertexArray(0);
 }

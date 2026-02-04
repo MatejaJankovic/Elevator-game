@@ -3,6 +3,7 @@
 #include <GLFW/glfw3.h>
 #include <string>
 #include <cmath>
+#include <vector>
 
 // Math structures for 3D
 struct Vec3 {
@@ -117,6 +118,14 @@ struct Mat4 {
     }
 };
 
+// OBJ Model structure
+struct OBJModel {
+    unsigned int VAO;
+    unsigned int VBO;
+    unsigned int vertexCount;
+    unsigned int texture;
+};
+
 // Original 2D functions (kept for UI elements)
 int endProgram(std::string message);
 unsigned int createShader(const char* vsSource, const char* fsSource);
@@ -136,3 +145,7 @@ unsigned int createWallVAO();
 unsigned int createCubeVAO();
 void render3DQuad(unsigned int VAO, unsigned int texture, unsigned int shader, const Mat4& model, const Mat4& view, const Mat4& projection, const Vec3& lightPos, const Vec3& viewPos);
 void render3DColorQuad(unsigned int VAO, unsigned int shader, const Mat4& model, const Mat4& view, const Mat4& projection, const Vec3& lightPos, float r, float g, float b, float a);
+
+// OBJ Model loading
+OBJModel loadOBJModel(const char* objPath, const char* texturePath);
+void renderOBJModel(const OBJModel& model, unsigned int shader, const Mat4& modelMatrix, const Mat4& view, const Mat4& projection, const Vec3& lightPos, const Vec3& viewPos);

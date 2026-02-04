@@ -17,7 +17,7 @@ const float PI = 3.14159265359f;
 const float FLOOR_HEIGHT = 6.0f;      // Height of each floor (doubled from 3)
 const float FLOOR_WIDTH = 20.0f;      // Width of the building (doubled from 10)
 const float FLOOR_DEPTH = 16.0f;      // Depth of each floor (doubled from 8)
-const float ELEVATOR_SIZE = 3.0f;     // Elevator cabin size
+const float ELEVATOR_SIZE = 3.9f;     // Elevator cabin size (increased 30%)
 const int NUM_FLOORS = 8;
 
 // Elevator position - in CORNER (back-right corner)
@@ -181,6 +181,14 @@ int main()
     floorTextures[7] = loadImageToTexture("Resources/sestiSprat.jpg");
     for (int i = 0; i < 8; i++) setTextureFiltering(floorTextures[i]);
 
+    // Load 3D plant models
+    OBJModel plant1 = loadOBJModel("Resources/indoor-plant-1/source/pflant_1/pflant_1.obj", 
+                                   "Resources/indoor-plant-1/source/pflant_1/texture_1001.png");
+    OBJModel plant2 = loadOBJModel("Resources/indoor-plant-2/source/plant_2/plant_2.obj",
+                                   "Resources/indoor-plant-2/source/plant_2/plant_2_tex.png");
+    OBJModel plant3 = loadOBJModel("Resources/indoor-plant-3/source/plant_3/plant_3.obj",
+                                   "Resources/indoor-plant-3/source/plant_3/plant_3_tex.png");
+
     // Create button panel - 2 COLUMNS of 6 buttons each, SMALLER size
     std::vector<Button3D> buttons(12);
     float btnSize = 0.15f;      // Smaller buttons
@@ -313,11 +321,50 @@ int main()
                 setShaderMat4(shader3D, "uModel", rightWall);
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
                 
+                // ========== RENDER PLANTS IN CORNERS ==========
+                float plantScale = 0.4875f;
+                float cornerOffset = 1.5f;
+                
+                // Front-left corner (plant 1)
+                Mat4 plant1Model = Mat4::translate(Vec3(-FLOOR_WIDTH/2 + cornerOffset, floorY, FLOOR_DEPTH/2 - cornerOffset)) *
+                                   Mat4::scale(Vec3(plantScale, plantScale, plantScale));
+                renderOBJModel(plant1, shader3D, plant1Model, view, projection, lightPos, camera.position);
+                
+                // Front-right corner (plant 2) - NOT elevator corner
+                Mat4 plant2Model = Mat4::translate(Vec3(FLOOR_WIDTH/2 - cornerOffset, floorY, FLOOR_DEPTH/2 - cornerOffset)) *
+                                   Mat4::scale(Vec3(plantScale, plantScale, plantScale));
+                renderOBJModel(plant2, shader3D, plant2Model, view, projection, lightPos, camera.position);
+                
+                // Back-left corner (plant 3) - NOT elevator corner which is back-right
+                Mat4 plant3Model = Mat4::translate(Vec3(-FLOOR_WIDTH/2 + cornerOffset, floorY, -FLOOR_DEPTH/2 + cornerOffset)) *
+                                   Mat4::scale(Vec3(plantScale, plantScale, plantScale));
+                renderOBJModel(plant3, shader3D, plant3Model, view, projection, lightPos, camera.position);
+                
                 // ========== RENDER ELEVATOR EXTERIOR (cube in corner) ==========
                 if (elevator.currentFloor == person.currentFloor) {
                     float cabinY = elevator.y + ELEVATOR_SIZE/2;
                     
-                    glBindTexture(GL_TEXTURE_2D, elevatorWallTex);  // Metal for all sides except front
+                    glUseProgram(shader3D);
+                    setShaderMat4(shader3D, "uView", view);
+                    setShaderMat4(shader3D, "uProjection", projection);
+                    setShaderVec3(shader3D, "uLightPos", lightPos);
+                    setShaderVec3(shader3D, "uViewPos", camera.position);
+                    setShaderVec3(shader3D, "uLightColor", Vec3(1.0f, 1.0f, 1.0f));
+                    setShaderFloat(shader3D, "uAmbientStrength", 0.6f);
+                    setShaderFloat(shader3D, "uAlpha", 1.0f);
+                    glActiveTexture(GL_TEXTURE0);
+                    
+                    // Top wall of elevator (metal ceiling) - use floorVAO for horizontal surface
+                    glBindVertexArray(floorVAO);
+                    glBindTexture(GL_TEXTURE_2D, elevatorWallTex);
+                    Mat4 elevTop = Mat4::translate(Vec3(ELEVATOR_X, elevator.y + ELEVATOR_SIZE, ELEVATOR_Z)) * 
+                                  Mat4::rotateX(PI) * Mat4::scale(Vec3(ELEVATOR_SIZE, 1.0f, ELEVATOR_SIZE));
+                    setShaderMat4(shader3D, "uModel", elevTop);
+                    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                    
+                    // Vertical walls use wallVAO
+                    glBindVertexArray(wallVAO);
+                    glBindTexture(GL_TEXTURE_2D, elevatorWallTex);
                     
                     // Back wall of elevator (metal)
                     Mat4 elevBack = Mat4::translate(Vec3(ELEVATOR_X, cabinY, ELEVATOR_Z - ELEVATOR_SIZE/2)) * 
@@ -353,7 +400,6 @@ int main()
                         glBindTexture(GL_TEXTURE_2D, elevatorDoorClosedTex);
                         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
                     }
-                    // If doors open, don't render front - person can see inside
                 }
             }
             else {
@@ -429,23 +475,7 @@ int main()
                                     elevator.y + btn.position.y, 
                                     ELEVATOR_Z + btn.position.z);
                     
-                    // Highlight pressed buttons
-                    if (btn.isPressed && btn.floorNumber >= 0) {
-                        glUseProgram(colorShader3D);
-                        Mat4 highlightModel = Mat4::translate(btnWorldPos + Vec3(0.005f, 0, 0)) * 
-                                             Mat4::rotateY(PI/2) * Mat4::scale(Vec3(btn.width + 0.02f, btn.height + 0.02f, 1.0f));
-                        setShaderMat4(colorShader3D, "uModel", highlightModel);
-                        setShaderMat4(colorShader3D, "uView", view);
-                        setShaderMat4(colorShader3D, "uProjection", projection);
-                        setShaderVec3(colorShader3D, "uLightPos", Vec3(ELEVATOR_X, elevator.y + ELEVATOR_SIZE, ELEVATOR_Z));
-                        setShaderVec3(colorShader3D, "uLightColor", Vec3(1.0f, 1.0f, 1.0f));
-                        setShaderFloat(colorShader3D, "uAmbientStrength", 0.9f);
-                        glUniform4f(glGetUniformLocation(colorShader3D, "uColor"), 1.0f, 1.0f, 0.0f, 1.0f);
-                        glBindVertexArray(wallVAO);
-                        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-                    }
-                    
-                    // Button texture
+                    // Button texture (render first)
                     glUseProgram(shader3D);
                     Mat4 btnModel = Mat4::translate(btnWorldPos) * 
                                    Mat4::rotateY(PI/2) * Mat4::scale(Vec3(btn.width, btn.height, 1.0f));
@@ -460,6 +490,45 @@ int main()
                     glBindTexture(GL_TEXTURE_2D, btn.texture);
                     glBindVertexArray(wallVAO);
                     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                    
+                    // Yellow border for pressed buttons (render on top)
+                    if (btn.isPressed && btn.floorNumber >= 0) {
+                        glUseProgram(colorShader3D);
+                        setShaderMat4(colorShader3D, "uView", view);
+                        setShaderMat4(colorShader3D, "uProjection", projection);
+                        setShaderVec3(colorShader3D, "uLightPos", Vec3(ELEVATOR_X, elevator.y + ELEVATOR_SIZE, ELEVATOR_Z));
+                        setShaderVec3(colorShader3D, "uLightColor", Vec3(1.0f, 1.0f, 1.0f));
+                        setShaderFloat(colorShader3D, "uAmbientStrength", 0.9f);
+                        glUniform4f(glGetUniformLocation(colorShader3D, "uColor"), 1.0f, 1.0f, 0.0f, 1.0f);
+                        glBindVertexArray(wallVAO);
+                        
+                        float borderThickness = 0.01f;
+                        float offset = 0.006f;
+                        
+                        // Top border
+                        Mat4 topBorder = Mat4::translate(btnWorldPos + Vec3(offset, btn.height/2, 0)) * 
+                                        Mat4::rotateY(PI/2) * Mat4::scale(Vec3(btn.width + borderThickness*2, borderThickness, 1.0f));
+                        setShaderMat4(colorShader3D, "uModel", topBorder);
+                        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                        
+                        // Bottom border
+                        Mat4 bottomBorder = Mat4::translate(btnWorldPos + Vec3(offset, -btn.height/2, 0)) * 
+                                           Mat4::rotateY(PI/2) * Mat4::scale(Vec3(btn.width + borderThickness*2, borderThickness, 1.0f));
+                        setShaderMat4(colorShader3D, "uModel", bottomBorder);
+                        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                        
+                        // Left border
+                        Mat4 leftBorder = Mat4::translate(btnWorldPos + Vec3(offset, 0, -btn.width/2)) * 
+                                         Mat4::rotateY(PI/2) * Mat4::scale(Vec3(borderThickness, btn.height + borderThickness*2, 1.0f));
+                        setShaderMat4(colorShader3D, "uModel", leftBorder);
+                        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                        
+                        // Right border
+                        Mat4 rightBorder = Mat4::translate(btnWorldPos + Vec3(offset, 0, btn.width/2)) * 
+                                          Mat4::rotateY(PI/2) * Mat4::scale(Vec3(borderThickness, btn.height + borderThickness*2, 1.0f));
+                        setShaderMat4(colorShader3D, "uModel", rightBorder);
+                        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                    }
                 }
             }
 
@@ -776,6 +845,41 @@ void updateCamera(Camera& camera, Person& person, float deltaTime)
                         }
                     }
                 }
+            }
+            
+            // PLANT COLLISION - block movement through plants
+            float cornerOffset = 1.5f;
+            float plantRadius = 0.8f;
+            Vec3 oldPos = person.position;
+            
+            // Plant 1 - Front-left corner
+            Vec3 plant1Pos(-FLOOR_WIDTH/2 + cornerOffset, floorY, FLOOR_DEPTH/2 - cornerOffset);
+            float dist1 = sqrt((newPos.x - plant1Pos.x) * (newPos.x - plant1Pos.x) + 
+                              (newPos.z - plant1Pos.z) * (newPos.z - plant1Pos.z));
+            if (dist1 < plantRadius) {
+                Vec3 dir = Vec3(newPos.x - plant1Pos.x, 0, newPos.z - plant1Pos.z).normalize();
+                newPos.x = plant1Pos.x + dir.x * plantRadius;
+                newPos.z = plant1Pos.z + dir.z * plantRadius;
+            }
+            
+            // Plant 2 - Front-right corner
+            Vec3 plant2Pos(FLOOR_WIDTH/2 - cornerOffset, floorY, FLOOR_DEPTH/2 - cornerOffset);
+            float dist2 = sqrt((newPos.x - plant2Pos.x) * (newPos.x - plant2Pos.x) + 
+                              (newPos.z - plant2Pos.z) * (newPos.z - plant2Pos.z));
+            if (dist2 < plantRadius) {
+                Vec3 dir = Vec3(newPos.x - plant2Pos.x, 0, newPos.z - plant2Pos.z).normalize();
+                newPos.x = plant2Pos.x + dir.x * plantRadius;
+                newPos.z = plant2Pos.z + dir.z * plantRadius;
+            }
+            
+            // Plant 3 - Back-left corner
+            Vec3 plant3Pos(-FLOOR_WIDTH/2 + cornerOffset, floorY, -FLOOR_DEPTH/2 + cornerOffset);
+            float dist3 = sqrt((newPos.x - plant3Pos.x) * (newPos.x - plant3Pos.x) + 
+                              (newPos.z - plant3Pos.z) * (newPos.z - plant3Pos.z));
+            if (dist3 < plantRadius) {
+                Vec3 dir = Vec3(newPos.x - plant3Pos.x, 0, newPos.z - plant3Pos.z).normalize();
+                newPos.x = plant3Pos.x + dir.x * plantRadius;
+                newPos.z = plant3Pos.z + dir.z * plantRadius;
             }
         }
         
