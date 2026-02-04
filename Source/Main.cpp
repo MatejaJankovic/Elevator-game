@@ -225,7 +225,7 @@ int main()
     for (auto& btn : buttons) setTextureFiltering(btn.texture);
 
     // Initialize elevator and person
-    Elevator elevator = {getFloorYPosition(1), 1, 1, false, false, 0.0f, 3.0f, false, {}};
+    Elevator elevator = {getFloorYPosition(2), 2, 2, false, false, 0.0f, 3.0f, false, {}};
     Person person = {Vec3(0.0f, getFloorYPosition(1) + 1.7f, 0.0f), false, 1, 5.0f};
 
     // Initialize camera
@@ -678,16 +678,29 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
     }
     
     // Call elevator with C key (opens doors if elevator is on same floor)
+    // Person must be near the elevator corner area to call it
     if (key == GLFW_KEY_C && action == GLFW_PRESS && globalElevator && globalPerson) {
         if (!globalPerson->inElevator) {
-            if (globalElevator->currentFloor != globalPerson->currentFloor) {
-                // Call elevator to this floor
-                addFloorToQueue(*globalElevator, globalPerson->currentFloor);
-            } else {
-                // Elevator is here - open doors if they're closed
-                if (!globalElevator->doorsOpen && !globalElevator->moving) {
-                    globalElevator->doorsOpen = true;
-                    globalElevator->doorTimer = 0.0f;
+            // Check if person is near the elevator corner area
+            float callDistance = 2.5f; // Distance from elevator area to be able to call
+            float elevMinX = ELEVATOR_X - ELEVATOR_SIZE/2 - callDistance;
+            float elevMaxX = ELEVATOR_X + ELEVATOR_SIZE/2 + callDistance;
+            float elevMinZ = ELEVATOR_Z - ELEVATOR_SIZE/2 - callDistance;
+            float elevMaxZ = ELEVATOR_Z + ELEVATOR_SIZE/2 + callDistance;
+            
+            bool nearElevator = (globalPerson->position.x > elevMinX && globalPerson->position.x < elevMaxX &&
+                                globalPerson->position.z > elevMinZ && globalPerson->position.z < elevMaxZ);
+            
+            if (nearElevator) {
+                if (globalElevator->currentFloor != globalPerson->currentFloor) {
+                    // Call elevator to this floor
+                    addFloorToQueue(*globalElevator, globalPerson->currentFloor);
+                } else {
+                    // Elevator is here - open doors if they're closed
+                    if (!globalElevator->doorsOpen && !globalElevator->moving) {
+                        globalElevator->doorsOpen = true;
+                        globalElevator->doorTimer = 0.0f;
+                    }
                 }
             }
         }
