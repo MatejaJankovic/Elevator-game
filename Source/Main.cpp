@@ -293,6 +293,8 @@ int main()
                 setShaderFloat(shader3D, "uLinear", lightLinear);
                 setShaderFloat(shader3D, "uQuadratic", lightQuadratic);
                 setShaderFloat(shader3D, "uAlpha", 1.0f);
+                // No button lights when outside elevator
+                glUniform1i(glGetUniformLocation(shader3D, "uNumButtonLights"), 0);
                 glActiveTexture(GL_TEXTURE0);
                 
                 // Floor (pod.png)
@@ -462,6 +464,30 @@ int main()
                 // Elevator interior lamp position - centered on elevator ceiling
                 Vec3 elevatorLightPos(ELEVATOR_X, elevator.y + ELEVATOR_SIZE - 0.5f, ELEVATOR_Z);
                 
+                // Collect button light positions for lighting the elevator interior
+                // Light position is slightly in front of the button surface for visible glow
+                std::vector<Vec3> buttonLightPositions;
+                std::vector<int> buttonLightActive;
+                for (auto& btn : buttons) {
+                    Vec3 btnWorldPos(ELEVATOR_X - ELEVATOR_SIZE/2 + 0.04f,  // Close to button surface
+                                    elevator.y + btn.position.y, 
+                                    ELEVATOR_Z + btn.position.z);
+                    buttonLightPositions.push_back(btnWorldPos);
+                    buttonLightActive.push_back(btn.isPressed ? 1 : 0);
+                }
+                
+                // Lambda to set button light uniforms
+                auto setButtonLightUniforms = [&](unsigned int shader) {
+                    glUniform1i(glGetUniformLocation(shader, "uNumButtonLights"), (int)buttonLightPositions.size());
+                    for (size_t j = 0; j < buttonLightPositions.size(); j++) {
+                        std::string posName = "uButtonLightPos[" + std::to_string(j) + "]";
+                        std::string activeName = "uButtonLightActive[" + std::to_string(j) + "]";
+                        glUniform3f(glGetUniformLocation(shader, posName.c_str()), 
+                                   buttonLightPositions[j].x, buttonLightPositions[j].y, buttonLightPositions[j].z);
+                        glUniform1i(glGetUniformLocation(shader, activeName.c_str()), buttonLightActive[j]);
+                    }
+                };
+                
                 glUseProgram(shader3D);
                 setShaderMat4(shader3D, "uView", view);
                 setShaderMat4(shader3D, "uProjection", projection);
@@ -473,6 +499,7 @@ int main()
                 setShaderFloat(shader3D, "uLinear", 0.14f);  // Slightly stronger falloff for smaller space
                 setShaderFloat(shader3D, "uQuadratic", 0.07f);
                 setShaderFloat(shader3D, "uAlpha", 1.0f);
+                setButtonLightUniforms(shader3D);
                 glActiveTexture(GL_TEXTURE0);
                 
                 glBindTexture(GL_TEXTURE_2D, elevatorWallTex);  // Metal texture
@@ -547,6 +574,7 @@ int main()
                 setShaderFloat(shader3D, "uLinear", 0.14f);
                 setShaderFloat(shader3D, "uQuadratic", 0.07f);
                 setShaderFloat(shader3D, "uAlpha", 1.0f);
+                setButtonLightUniforms(shader3D);
                 
                 if (ceilingLight.texture > 0) {
                     glActiveTexture(GL_TEXTURE0);
@@ -563,12 +591,14 @@ int main()
                 // ========== RENDER BUTTONS ON LEFT WALL ==========
                 glBindVertexArray(wallVAO);
                 
-                for (auto& btn : buttons) {
-                    Vec3 btnWorldPos(ELEVATOR_X - ELEVATOR_SIZE/2 + 0.02f, 
+                for (size_t i = 0; i < buttons.size(); i++) {
+                    auto& btn = buttons[i];
+                    // Button position on the panel surface
+                    Vec3 btnWorldPos(ELEVATOR_X - ELEVATOR_SIZE/2 + 0.025f,  // On panel surface
                                     elevator.y + btn.position.y, 
                                     ELEVATOR_Z + btn.position.z);
                     
-                    // Button texture (render first)
+                    // Button texture
                     glUseProgram(shader3D);
                     Mat4 btnModel = Mat4::translate(btnWorldPos) * 
                                    Mat4::rotateY(PI/2) * Mat4::scale(Vec3(btn.width, btn.height, 1.0f));
@@ -578,56 +608,17 @@ int main()
                     setShaderVec3(shader3D, "uLightPos", elevatorLightPos);
                     setShaderVec3(shader3D, "uViewPos", camera.position);
                     setShaderVec3(shader3D, "uLightColor", Vec3(1.0f, 0.95f, 0.9f));
-                    setShaderFloat(shader3D, "uAmbientStrength", 0.3f);
+                    // Pressed buttons glow brighter (higher ambient)
+                    setShaderFloat(shader3D, "uAmbientStrength", btn.isPressed ? 0.9f : 0.3f);
                     setShaderFloat(shader3D, "uConstant", lightConstant);
                     setShaderFloat(shader3D, "uLinear", 0.14f);
                     setShaderFloat(shader3D, "uQuadratic", 0.07f);
                     setShaderFloat(shader3D, "uAlpha", 1.0f);
+                    setButtonLightUniforms(shader3D);
+                    
                     glBindTexture(GL_TEXTURE_2D, btn.texture);
                     glBindVertexArray(wallVAO);
                     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-                    
-                    // Yellow border for pressed buttons (render on top)
-                    if (btn.isPressed && btn.floorNumber >= 0) {
-                        glUseProgram(colorShader3D);
-                        setShaderMat4(colorShader3D, "uView", view);
-                        setShaderMat4(colorShader3D, "uProjection", projection);
-                        setShaderVec3(colorShader3D, "uLightPos", elevatorLightPos);
-                        setShaderVec3(colorShader3D, "uLightColor", Vec3(1.0f, 0.95f, 0.9f));
-                        setShaderFloat(colorShader3D, "uAmbientStrength", 0.3f);
-                        setShaderFloat(colorShader3D, "uConstant", lightConstant);
-                        setShaderFloat(colorShader3D, "uLinear", 0.14f);
-                        setShaderFloat(colorShader3D, "uQuadratic", 0.07f);
-                        glUniform4f(glGetUniformLocation(colorShader3D, "uColor"), 1.0f, 1.0f, 0.0f, 1.0f);
-                        glBindVertexArray(wallVAO);
-                        
-                        float borderThickness = 0.01f;
-                        float offset = 0.006f;
-                        
-                        // Top border
-                        Mat4 topBorder = Mat4::translate(btnWorldPos + Vec3(offset, btn.height/2, 0)) * 
-                                        Mat4::rotateY(PI/2) * Mat4::scale(Vec3(btn.width + borderThickness*2, borderThickness, 1.0f));
-                        setShaderMat4(colorShader3D, "uModel", topBorder);
-                        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-                        
-                        // Bottom border
-                        Mat4 bottomBorder = Mat4::translate(btnWorldPos + Vec3(offset, -btn.height/2, 0)) * 
-                                           Mat4::rotateY(PI/2) * Mat4::scale(Vec3(btn.width + borderThickness*2, borderThickness, 1.0f));
-                        setShaderMat4(colorShader3D, "uModel", bottomBorder);
-                        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-                        
-                        // Left border
-                        Mat4 leftBorder = Mat4::translate(btnWorldPos + Vec3(offset, 0, -btn.width/2)) * 
-                                         Mat4::rotateY(PI/2) * Mat4::scale(Vec3(borderThickness, btn.height + borderThickness*2, 1.0f));
-                        setShaderMat4(colorShader3D, "uModel", leftBorder);
-                        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-                        
-                        // Right border
-                        Mat4 rightBorder = Mat4::translate(btnWorldPos + Vec3(offset, 0, btn.width/2)) * 
-                                          Mat4::rotateY(PI/2) * Mat4::scale(Vec3(borderThickness, btn.height + borderThickness*2, 1.0f));
-                        setShaderMat4(colorShader3D, "uModel", rightBorder);
-                        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-                    }
                 }
             }
 
@@ -739,7 +730,7 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
         Button3D* hitButton = nullptr;
 
         for (auto& btn : *globalButtons) {
-            Vec3 btnWorldPos(ELEVATOR_X - ELEVATOR_SIZE/2 + 0.02f, 
+            Vec3 btnWorldPos(ELEVATOR_X - ELEVATOR_SIZE/2 + 0.025f,  // Match button render position
                             globalElevator->y + btn.position.y, 
                             ELEVATOR_Z + btn.position.z);
             
