@@ -5,6 +5,7 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#include <iostream>
 #include "../Header/Util.h"
 
 const int WINDOW_WIDTH = 1280;
@@ -87,7 +88,10 @@ bool firstMouse = true;
 double lastMouseX = 0, lastMouseY = 0;
 bool keys[1024] = {false};
 
-// Forward declarations
+// Rendering toggles for depth test and back-face culling
+bool depthTestEnabled = true;
+bool cullFaceEnabled = false;
+
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 void mouseCallback(GLFWwindow* window, double xpos, double ypos);
 void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
@@ -115,7 +119,15 @@ int main()
 
     if (glewInit() != GLEW_OK) return endProgram("GLEW nije uspeo da se inicijalizuje.");
 
+    // Configure depth testing
     glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+    
+    // Configure back-face culling (disabled by default, toggle with 'F')
+    glCullFace(GL_BACK);
+    glFrontFace(GL_CCW);
+    // Culling is OFF by default - enable with 'F' key
+    
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -123,6 +135,7 @@ int main()
     unsigned int shader3D = createShader("Shaders/3d.vert", "Shaders/3d.frag");
     unsigned int colorShader3D = createShader("Shaders/3d.vert", "Shaders/3d_color.frag");
     unsigned int shader2D = createShader("Shaders/basic.vert", "Shaders/basic.frag");
+    unsigned int colorShader2D = createShader("Shaders/color2d.vert", "Shaders/color2d.frag");
 
     // Create 3D geometry VAOs
     unsigned int floorVAO = create3DQuadVAO();
@@ -163,6 +176,12 @@ int main()
     unsigned int podTex = loadImageToTexture("Resources/pod.png");
     unsigned int plafonTex = loadImageToTexture("Resources/plafon.jpg");
     
+    // Status overlay text textures
+    unsigned int cullOnTex = loadImageToTexture("Resources/cull_on.png");
+    unsigned int cullOffTex = loadImageToTexture("Resources/cull_off.png");
+    unsigned int depthOnTex = loadImageToTexture("Resources/depth_on.png");
+    unsigned int depthOffTex = loadImageToTexture("Resources/depth_off.png");
+    
     setTextureFiltering(elevatorWallTex);
     setTextureFiltering(elevatorDoorClosedTex);
     setTextureFiltering(elevatorDoorOpenTex);
@@ -170,6 +189,10 @@ int main()
     setTextureFiltering(studentInfoTex);
     setTextureFiltering(podTex);
     setTextureFiltering(plafonTex);
+    if (cullOnTex) setTextureFiltering(cullOnTex);
+    if (cullOffTex) setTextureFiltering(cullOffTex);
+    if (depthOnTex) setTextureFiltering(depthOnTex);
+    if (depthOffTex) setTextureFiltering(depthOffTex);
 
     // Load floor-specific textures (ALL 4 WALLS same texture per floor)
     unsigned int floorTextures[8];
@@ -393,68 +416,71 @@ int main()
                 glEnable(GL_BLEND);
                 
                 // ========== RENDER ELEVATOR EXTERIOR (cube in corner) ==========
-                if (elevator.currentFloor == person.currentFloor) {
-                    float cabinY = elevator.y + ELEVATOR_SIZE/2;
-                    
-                    glUseProgram(shader3D);
-                    setShaderMat4(shader3D, "uView", view);
-                    setShaderMat4(shader3D, "uProjection", projection);
-                    setShaderVec3(shader3D, "uLightPos", floorLightPos);
-                    setShaderVec3(shader3D, "uViewPos", camera.position);
-                    setShaderVec3(shader3D, "uLightColor", Vec3(1.0f, 0.95f, 0.9f));
-                    setShaderFloat(shader3D, "uAmbientStrength", 0.25f);  // Match floor ambient
-                    setShaderFloat(shader3D, "uConstant", lightConstant);
-                    setShaderFloat(shader3D, "uLinear", lightLinear);
-                    setShaderFloat(shader3D, "uQuadratic", lightQuadratic);
-                    setShaderFloat(shader3D, "uAlpha", 1.0f);
-                    glActiveTexture(GL_TEXTURE0);
-                    
-                    // Top wall of elevator (metal ceiling) - use floorVAO for horizontal surface
-                    glBindVertexArray(floorVAO);
-                    glBindTexture(GL_TEXTURE_2D, elevatorWallTex);
-                    Mat4 elevTop = Mat4::translate(Vec3(ELEVATOR_X, elevator.y + ELEVATOR_SIZE, ELEVATOR_Z)) * 
-                                  Mat4::rotateX(PI) * Mat4::scale(Vec3(ELEVATOR_SIZE, 1.0f, ELEVATOR_SIZE));
-                    setShaderMat4(shader3D, "uModel", elevTop);
+                // When player is OUTSIDE the elevator, render exterior walls
+                // Normals must point OUTWARD from the elevator for correct culling
+                float cabinY = elevator.y + ELEVATOR_SIZE/2;
+                
+                // Use existing floorLightPos for exterior lighting
+                
+                glUseProgram(shader3D);
+                setShaderMat4(shader3D, "uView", view);
+                setShaderMat4(shader3D, "uProjection", projection);
+                setShaderVec3(shader3D, "uLightPos", floorLightPos);
+                setShaderVec3(shader3D, "uViewPos", camera.position);
+                setShaderVec3(shader3D, "uLightColor", Vec3(1.0f, 0.95f, 0.9f));
+                setShaderFloat(shader3D, "uAmbientStrength", 0.25f);
+                setShaderFloat(shader3D, "uConstant", lightConstant);
+                setShaderFloat(shader3D, "uLinear", lightLinear);
+                setShaderFloat(shader3D, "uQuadratic", lightQuadratic);
+                setShaderFloat(shader3D, "uAlpha", 1.0f);
+                glUniform1i(glGetUniformLocation(shader3D, "uNumButtonLights"), 0);
+                glActiveTexture(GL_TEXTURE0);
+                
+                // Top wall of elevator (metal ceiling) - use floorVAO for horizontal surface
+                glBindVertexArray(floorVAO);
+                glBindTexture(GL_TEXTURE_2D, elevatorWallTex);
+                Mat4 elevTop = Mat4::translate(Vec3(ELEVATOR_X, elevator.y + ELEVATOR_SIZE, ELEVATOR_Z)) * 
+                              Mat4::rotateX(PI) * Mat4::scale(Vec3(ELEVATOR_SIZE, 1.0f, ELEVATOR_SIZE));
+                setShaderMat4(shader3D, "uModel", elevTop);
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                
+                // Vertical walls use wallVAO - EXTERIOR facing (normals pointing outward)
+                glBindVertexArray(wallVAO);
+                glBindTexture(GL_TEXTURE_2D, elevatorWallTex);
+                
+                // Back wall of elevator (metal) - exterior faces -Z direction
+                Mat4 elevBack = Mat4::translate(Vec3(ELEVATOR_X, cabinY, ELEVATOR_Z - ELEVATOR_SIZE/2)) * 
+                               Mat4::rotateY(PI) * Mat4::scale(Vec3(ELEVATOR_SIZE, ELEVATOR_SIZE, 1.0f));
+                setShaderMat4(shader3D, "uModel", elevBack);
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                
+                // Left wall of elevator (metal) - exterior faces -X direction
+                Mat4 elevLeft = Mat4::translate(Vec3(ELEVATOR_X - ELEVATOR_SIZE/2, cabinY, ELEVATOR_Z)) * 
+                               Mat4::rotateY(-PI/2) * Mat4::scale(Vec3(ELEVATOR_SIZE, ELEVATOR_SIZE, 1.0f));
+                setShaderMat4(shader3D, "uModel", elevLeft);
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                
+                // Right wall of elevator (metal) - exterior faces +X direction
+                Mat4 elevRight = Mat4::translate(Vec3(ELEVATOR_X + ELEVATOR_SIZE/2, cabinY, ELEVATOR_Z)) * 
+                                Mat4::rotateY(PI/2) * Mat4::scale(Vec3(ELEVATOR_SIZE, ELEVATOR_SIZE, 1.0f));
+                setShaderMat4(shader3D, "uModel", elevRight);
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                
+                // Front door - render based on door state - exterior faces +Z direction
+                if (elevator.doorsOpen) {
+                    // Doors open - render otvorenLift.png
+                    Mat4 elevFront = Mat4::translate(Vec3(ELEVATOR_X, cabinY, ELEVATOR_Z + ELEVATOR_SIZE/2)) * 
+                                    Mat4::scale(Vec3(ELEVATOR_SIZE, ELEVATOR_SIZE, 1.0f));
+                    setShaderMat4(shader3D, "uModel", elevFront);
+                    glBindTexture(GL_TEXTURE_2D, elevatorDoorOpenTex);
                     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-                    
-                    // Vertical walls use wallVAO
-                    glBindVertexArray(wallVAO);
-                    glBindTexture(GL_TEXTURE_2D, elevatorWallTex);
-                    
-                    // Back wall of elevator (metal)
-                    Mat4 elevBack = Mat4::translate(Vec3(ELEVATOR_X, cabinY, ELEVATOR_Z - ELEVATOR_SIZE/2)) * 
-                                   Mat4::scale(Vec3(ELEVATOR_SIZE, ELEVATOR_SIZE, 1.0f));
-                    setShaderMat4(shader3D, "uModel", elevBack);
+                } else {
+                    // Doors closed - render zatvorenLift.png
+                    Mat4 elevFront = Mat4::translate(Vec3(ELEVATOR_X, cabinY, ELEVATOR_Z + ELEVATOR_SIZE/2)) * 
+                                    Mat4::scale(Vec3(ELEVATOR_SIZE, ELEVATOR_SIZE, 1.0f));
+                    setShaderMat4(shader3D, "uModel", elevFront);
+                    glBindTexture(GL_TEXTURE_2D, elevatorDoorClosedTex);
                     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-                    
-                    // Left wall of elevator (metal)
-                    Mat4 elevLeft = Mat4::translate(Vec3(ELEVATOR_X - ELEVATOR_SIZE/2, cabinY, ELEVATOR_Z)) * 
-                                   Mat4::rotateY(PI/2) * Mat4::scale(Vec3(ELEVATOR_SIZE, ELEVATOR_SIZE, 1.0f));
-                    setShaderMat4(shader3D, "uModel", elevLeft);
-                    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-                    
-                    // Right wall of elevator (metal)
-                    Mat4 elevRight = Mat4::translate(Vec3(ELEVATOR_X + ELEVATOR_SIZE/2, cabinY, ELEVATOR_Z)) * 
-                                    Mat4::rotateY(-PI/2) * Mat4::scale(Vec3(ELEVATOR_SIZE, ELEVATOR_SIZE, 1.0f));
-                    setShaderMat4(shader3D, "uModel", elevRight);
-                    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-                    
-                    // Front door - render based on door state
-                    if (elevator.doorsOpen) {
-                        // Doors open - render otvorenLift.png
-                        Mat4 elevFront = Mat4::translate(Vec3(ELEVATOR_X, cabinY, ELEVATOR_Z + ELEVATOR_SIZE/2)) * 
-                                        Mat4::rotateY(PI) * Mat4::scale(Vec3(ELEVATOR_SIZE, ELEVATOR_SIZE, 1.0f));
-                        setShaderMat4(shader3D, "uModel", elevFront);
-                        glBindTexture(GL_TEXTURE_2D, elevatorDoorOpenTex);
-                        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-                    } else {
-                        // Doors closed - render zatvorenLift.png
-                        Mat4 elevFront = Mat4::translate(Vec3(ELEVATOR_X, cabinY, ELEVATOR_Z + ELEVATOR_SIZE/2)) * 
-                                        Mat4::rotateY(PI) * Mat4::scale(Vec3(ELEVATOR_SIZE, ELEVATOR_SIZE, 1.0f));
-                        setShaderMat4(shader3D, "uModel", elevFront);
-                        glBindTexture(GL_TEXTURE_2D, elevatorDoorClosedTex);
-                        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-                    }
                 }
             }
             else {
@@ -626,6 +652,66 @@ int main()
             glDisable(GL_DEPTH_TEST);
             renderQuad(VAO2D, crosshairTex, shader2D, 0.0f, 0.0f, 0.05f, 0.05f * aspect, 0.7f);
             
+            // Render status overlay in top-left corner
+            // Shows: "Back-face culling: ON/OFF" and "Depth test: ON/OFF"
+            {
+                // Background for status display
+                float statusBgWidth = 0.42f;
+                float statusBgHeight = 0.16f;
+                float statusBgX = -1.0f + statusBgWidth / 2.0f + 0.01f;
+                float statusBgY = 1.0f - statusBgHeight / 2.0f - 0.01f;
+                
+                // Semi-transparent dark background
+                renderColorQuad(VAO2D, colorShader2D, statusBgX, statusBgY, statusBgWidth, statusBgHeight, 0.0f, 0.0f, 0.0f, 0.75f);
+                
+                float lineHeight = 0.055f;
+                float textWidth = 0.38f;
+                float textHeight = 0.06f;  // Increased from 0.04f to 0.06f for better aspect ratio
+                
+                // === Back-face culling status (top line) ===
+                float cullY = statusBgY + lineHeight / 2.0f;
+                float textX = statusBgX;
+                
+                // Render text texture if available, otherwise colored indicator
+                if (cullFaceEnabled && cullOnTex) {
+                    renderQuad(VAO2D, cullOnTex, shader2D, textX, cullY, textWidth, textHeight, 1.0f);
+                } else if (!cullFaceEnabled && cullOffTex) {
+                    renderQuad(VAO2D, cullOffTex, shader2D, textX, cullY, textWidth, textHeight, 1.0f);
+                } else {
+                    // Fallback: colored bar indicator
+                    float barWidth = 0.30f;
+                    float barHeight = 0.025f;
+                    if (cullFaceEnabled) {
+                        renderColorQuad(VAO2D, colorShader2D, textX, cullY, barWidth, barHeight, 0.0f, 0.8f, 0.0f, 1.0f);
+                    } else {
+                        renderColorQuad(VAO2D, colorShader2D, textX, cullY, barWidth, barHeight, 0.8f, 0.0f, 0.0f, 1.0f);
+                    }
+                    // Small indicator showing key [F]
+                    renderColorQuad(VAO2D, colorShader2D, textX - barWidth/2.0f - 0.025f, cullY, 0.03f, 0.03f * aspect, 0.4f, 0.4f, 0.4f, 1.0f);
+                }
+                
+                // === Depth test status (bottom line) ===
+                float depthY = statusBgY - lineHeight / 2.0f;
+                
+                // Render text texture if available, otherwise colored indicator
+                if (depthTestEnabled && depthOnTex) {
+                    renderQuad(VAO2D, depthOnTex, shader2D, textX, depthY, textWidth, textHeight, 1.0f);
+                } else if (!depthTestEnabled && depthOffTex) {
+                    renderQuad(VAO2D, depthOffTex, shader2D, textX, depthY, textWidth, textHeight, 1.0f);
+                } else {
+                    // Fallback: colored bar indicator
+                    float barWidth = 0.30f;
+                    float barHeight = 0.025f;
+                    if (depthTestEnabled) {
+                        renderColorQuad(VAO2D, colorShader2D, textX, depthY, barWidth, barHeight, 0.0f, 0.8f, 0.0f, 1.0f);
+                    } else {
+                        renderColorQuad(VAO2D, colorShader2D, textX, depthY, barWidth, barHeight, 0.8f, 0.0f, 0.0f, 1.0f);
+                    }
+                    // Small indicator showing key [D]
+                    renderColorQuad(VAO2D, colorShader2D, textX - barWidth/2.0f - 0.025f, depthY, 0.03f, 0.03f * aspect, 0.4f, 0.4f, 0.4f, 1.0f);
+                }
+            }
+            
             // Render student info in bottom-right corner (200x80 pixels)
             float infoWidth = 200.0f / (float)winWidth * 2.0f;   // Convert pixels to NDC
             float infoHeight = 80.0f / (float)winHeight * 2.0f;  // Convert pixels to NDC
@@ -633,7 +719,10 @@ int main()
             float infoPosY = -1.0f + infoHeight / 2.0f + 0.02f;  // Bottom side with small margin
             renderQuad(VAO2D, studentInfoTex, shader2D, infoPosX, infoPosY, infoWidth, infoHeight, 1.0f);
             
-            glEnable(GL_DEPTH_TEST);
+            // Restore depth test state based on toggle
+            if (depthTestEnabled) {
+                glEnable(GL_DEPTH_TEST);
+            }
 
             glfwSwapBuffers(window);
         }
@@ -648,6 +737,7 @@ int main()
     glDeleteProgram(shader3D);
     glDeleteProgram(colorShader3D);
     glDeleteProgram(shader2D);
+    glDeleteProgram(colorShader2D);
 
     glfwDestroyWindow(window);
     glfwTerminate();
@@ -666,6 +756,30 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
             keys[key] = true;
         else if (action == GLFW_RELEASE)
             keys[key] = false;
+    }
+    
+    // Toggle Depth Test with 'T' key
+    if (key == GLFW_KEY_T && action == GLFW_PRESS) {
+        depthTestEnabled = !depthTestEnabled;
+        if (depthTestEnabled) {
+            glEnable(GL_DEPTH_TEST);
+            std::cout << "Depth Test: ON" << std::endl;
+        } else {
+            glDisable(GL_DEPTH_TEST);
+            std::cout << "Depth Test: OFF" << std::endl;
+        }
+    }
+    
+    // Toggle Back-Face Culling with 'F' key
+    if (key == GLFW_KEY_F && action == GLFW_PRESS) {
+        cullFaceEnabled = !cullFaceEnabled;
+        if (cullFaceEnabled) {
+            glEnable(GL_CULL_FACE);
+            std::cout << "Back-Face Culling: ON" << std::endl;
+        } else {
+            glDisable(GL_CULL_FACE);
+            std::cout << "Back-Face Culling: OFF" << std::endl;
+        }
     }
     
     // Call elevator with C key (opens doors if elevator is on same floor)

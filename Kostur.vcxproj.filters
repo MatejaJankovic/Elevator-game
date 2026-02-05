@@ -39,6 +39,9 @@
     <None Include="Shaders\3d.vert" />
     <None Include="Shaders\3d.frag" />
     <None Include="Shaders\3d_color.frag" />
+    <None Include="Shaders\color2d.vert" />
+    <None Include="Shaders\color2d.frag" />
+    <None Include="generate_status_textures.py" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\..\..\OneDrive\Radna površina\cetvrtiSprat.jpg">

@@ -132,6 +132,7 @@
     <ClInclude Include="Header\Util.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="generate_status_textures.py" />
     <None Include="packages.config" />
     <None Include="Shaders\3d.frag" />
     <None Include="Shaders\3d.vert" />
@@ -139,6 +140,8 @@
     <None Include="Shaders\basic.frag" />
     <None Include="Shaders\basic.vert" />
     <None Include="Shaders\color.frag" />
+    <None Include="Shaders\color2d.frag" />
+    <None Include="Shaders\color2d.vert" />
     <None Include="Shaders\cursor.frag" />
   </ItemGroup>
   <ItemGroup>
