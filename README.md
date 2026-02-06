@@ -21,4 +21,4 @@ Gruba specifikacija:
 Funkcionalnosti su okvirno iste kao u 2D. Spratovi i lift su modelovani u 3D sa teksturisanim podom i zidovima. Kamera prati čoveka koji se kreće po spratovima: pomera se na WASD po x i z osi i pogledom prati pomeranje miša. U liftu se na proizvoljnom zidu nalazi panel sa dugmićima isti kao u 2D i kada je miš usmeren ka bilo kom od dugmića (i ukoliko se čovek nalazi u liftu), levim klikom se to dugme aktivira (ako ima uslova, npr. vrata se neće otvoriti dok se lift kreće, odnosno isto kao u 2D). Kamera gleda u projekciji perspektive.
 
 Detaljna specifikacija:
-TBD
+Na svakom spratu i unutar lifta postoji model svetiljke u kom se nalazi izvor svetlosti. Na svakom spratu ima bar jedan model sobne biljke (ukupno bar 3 različita). Svaki dugmić na panelu se ponaša kao slabi izvor svetlosti kada je u uključenom stanju.
