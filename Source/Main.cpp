@@ -14,21 +14,21 @@ const float TARGET_FPS = 75.0f;
 const float FRAME_TIME = 1.0f / TARGET_FPS;
 const float PI = 3.14159265359f;
 
-// Floor dimensions in 3D world - DOUBLED SIZE
-const float FLOOR_HEIGHT = 6.0f;      // Height of each floor (doubled from 3)
-const float FLOOR_WIDTH = 20.0f;      // Width of the building (doubled from 10)
-const float FLOOR_DEPTH = 16.0f;      // Depth of each floor (doubled from 8)
-const float ELEVATOR_SIZE = 3.9f;     // Elevator cabin size (increased 30%)
+// Floor dimensions in 3D world
+const float FLOOR_HEIGHT = 6.0f;      // Height of each floor
+const float FLOOR_WIDTH = 20.0f;      // Width of the building
+const float FLOOR_DEPTH = 16.0f;      // Depth of each floor
+const float ELEVATOR_SIZE = 3.9f;     // Elevator cabin size
 const int NUM_FLOORS = 8;
 
-// Elevator position - in CORNER (back-right corner)
+// Elevator position - in back-right corner
 const float ELEVATOR_X = FLOOR_WIDTH/2 - ELEVATOR_SIZE/2;   // Right side
 const float ELEVATOR_Z = -FLOOR_DEPTH/2 + ELEVATOR_SIZE/2;  // Back side
 
 struct Camera {
     Vec3 position;
-    float yaw;       // Horizontal rotation
-    float pitch;     // Vertical rotation
+    float yaw;          // Horizontal rotation
+    float pitch;        // Vertical rotation
     float sensitivity;
     float moveSpeed;
     
@@ -52,7 +52,7 @@ struct Camera {
 };
 
 struct Button3D {
-    Vec3 position;  // Local position relative to elevator (on left wall)
+    Vec3 position;      // Local position relative to elevator (on left wall)
     float width, height;
     unsigned int texture;
     int floorNumber;
@@ -194,7 +194,7 @@ int main()
     if (depthOnTex) setTextureFiltering(depthOnTex);
     if (depthOffTex) setTextureFiltering(depthOffTex);
 
-    // Load floor-specific textures (ALL 4 WALLS same texture per floor)
+    // Load floor-specific textures (all 4 walls same texture per floor)
     unsigned int floorTextures[8];
     floorTextures[0] = loadImageToTexture("Resources/podrum.jpg");
     floorTextures[1] = loadImageToTexture("Resources/prizemlje.jpg");
@@ -218,10 +218,10 @@ int main()
     OBJModel ceilingLight = loadOBJModel("Resources/ceiling-light/source/FluorescentLight/FluorescentLight.obj",
                                         "Resources/ceiling-light/textures/FluorescentLight_Base_Color.png");
 
-    // Create button panel - 2 COLUMNS of 6 buttons each, SMALLER size
+    // Create button panel - 2 columns of 6 buttons each
     std::vector<Button3D> buttons(12);
-    float btnSize = 0.15f;      // Smaller buttons
-    float btnSpacingY = 0.20f;  // Tighter vertical spacing
+    float btnSize = 0.15f;      
+    float btnSpacingY = 0.20f;  
     
     // Left and right column positions (in elevator local coords, Z axis)
     float leftColZ = -0.10f;
@@ -229,7 +229,7 @@ int main()
     
     float btnStartY = 1.8f;  // Start from center height
     
-    // LEFT COLUMN (6 buttons: floors 6, 5, 4, 3, 2, 1)
+    // Left column (6 buttons: floors 6, 5, 4, 3, 2, 1)
     buttons[7] = {Vec3(0.0f, btnStartY, leftColZ), btnSize, btnSize, loadImageToTexture("Resources/taster6.png"), 7, false};
     buttons[6] = {Vec3(0.0f, btnStartY - btnSpacingY, leftColZ), btnSize, btnSize, loadImageToTexture("Resources/taster5.png"), 6, false};
     buttons[5] = {Vec3(0.0f, btnStartY - 2*btnSpacingY, leftColZ), btnSize, btnSize, loadImageToTexture("Resources/taster4.png"), 5, false};
@@ -237,7 +237,7 @@ int main()
     buttons[3] = {Vec3(0.0f, btnStartY - 4*btnSpacingY, leftColZ), btnSize, btnSize, loadImageToTexture("Resources/taster2.png"), 3, false};
     buttons[2] = {Vec3(0.0f, btnStartY - 5*btnSpacingY, leftColZ), btnSize, btnSize, loadImageToTexture("Resources/taster1.png"), 2, false};
     
-    // RIGHT COLUMN (6 buttons: PR, SU, Open, Close, Stop, Ventilation)
+    // Right column (6 buttons: PR, SU, Open, Close, Stop, Ventilation)
     buttons[1] = {Vec3(0.0f, btnStartY, rightColZ), btnSize, btnSize, loadImageToTexture("Resources/tasterPrizemlje.png"), 1, false};
     buttons[0] = {Vec3(0.0f, btnStartY - btnSpacingY, rightColZ), btnSize, btnSize, loadImageToTexture("Resources/tasterSuteren.png"), 0, false};
     buttons[8] = {Vec3(0.0f, btnStartY - 2*btnSpacingY, rightColZ), btnSize, btnSize, loadImageToTexture("Resources/tasterOtvaranje.png"), -1, false};
@@ -272,7 +272,6 @@ int main()
     Mat4 projection = Mat4::perspective(PI / 4.0f, aspect, 0.1f, 200.0f);
 
     // Light attenuation parameters for realistic point light falloff
-    // Higher values = faster falloff = more dramatic difference between center and corners
     float lightConstant = 1.0f;
     float lightLinear = 0.14f;      // Increased for more noticeable falloff
     float lightQuadratic = 0.07f;   // Increased for stronger distance-squared falloff
@@ -310,8 +309,8 @@ int main()
                 setShaderMat4(shader3D, "uProjection", projection);
                 setShaderVec3(shader3D, "uLightPos", floorLightPos);
                 setShaderVec3(shader3D, "uViewPos", camera.position);
-                setShaderVec3(shader3D, "uLightColor", Vec3(1.0f, 0.95f, 0.9f));  // Warm white light
-                setShaderFloat(shader3D, "uAmbientStrength", 0.25f);  // Moderate ambient for visible corners
+                setShaderVec3(shader3D, "uLightColor", Vec3(1.0f, 0.95f, 0.9f));    // Warm white light
+                setShaderFloat(shader3D, "uAmbientStrength", 0.25f);                // Moderate ambient for visible corners
                 setShaderFloat(shader3D, "uConstant", lightConstant);
                 setShaderFloat(shader3D, "uLinear", lightLinear);
                 setShaderFloat(shader3D, "uQuadratic", lightQuadratic);
@@ -334,7 +333,7 @@ int main()
                 glBindTexture(GL_TEXTURE_2D, plafonTex);
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
                 
-                // ALL 4 WALLS - same texture for current floor
+                // all 4 walls - same texture for current floor
                 glBindTexture(GL_TEXTURE_2D, floorTextures[floor]);
                 glBindVertexArray(wallVAO);
                 
@@ -371,12 +370,12 @@ int main()
                                    Mat4::scale(Vec3(plantScale, plantScale, plantScale));
                 renderOBJModel(plant1, shader3D, plant1Model, view, projection, floorLightPos, camera.position);
                 
-                // Front-right corner (plant 2) - NOT elevator corner
+                // Front-right corner (plant 2)
                 Mat4 plant2Model = Mat4::translate(Vec3(FLOOR_WIDTH/2 - cornerOffset, floorY, FLOOR_DEPTH/2 - cornerOffset)) *
                                    Mat4::scale(Vec3(plantScale, plantScale, plantScale));
                 renderOBJModel(plant2, shader3D, plant2Model, view, projection, floorLightPos, camera.position);
                 
-                // Back-left corner (plant 3) - NOT elevator corner which is back-right
+                // Back-left corner (plant 3)
                 Mat4 plant3Model = Mat4::translate(Vec3(-FLOOR_WIDTH/2 + cornerOffset, floorY, -FLOOR_DEPTH/2 + cornerOffset)) *
                                    Mat4::scale(Vec3(plantScale, plantScale, plantScale));
                 renderOBJModel(plant3, shader3D, plant3Model, view, projection, floorLightPos, camera.position);
@@ -397,7 +396,7 @@ int main()
                 setShaderVec3(shader3D, "uLightPos", floorLightPos);
                 setShaderVec3(shader3D, "uViewPos", camera.position);
                 setShaderVec3(shader3D, "uLightColor", Vec3(1.0f, 0.95f, 0.9f));
-                setShaderFloat(shader3D, "uAmbientStrength", 0.9f);  // Lamp itself is bright
+                setShaderFloat(shader3D, "uAmbientStrength", 0.9f);      // Lamp itself is bright
                 setShaderFloat(shader3D, "uConstant", lightConstant);
                 setShaderFloat(shader3D, "uLinear", lightLinear);
                 setShaderFloat(shader3D, "uQuadratic", lightQuadratic);
@@ -416,8 +415,8 @@ int main()
                 glEnable(GL_BLEND);
                 
                 // ========== RENDER ELEVATOR EXTERIOR (cube in corner) ==========
-                // When player is OUTSIDE the elevator, render exterior walls
-                // Normals must point OUTWARD from the elevator for correct culling
+                // When player is otuside the elevator, render exterior walls
+                // Normals must point outward from the elevator for correct culling
                 float cabinY = elevator.y + ELEVATOR_SIZE/2;
                 
                 // Use existing floorLightPos for exterior lighting
@@ -444,7 +443,7 @@ int main()
                 setShaderMat4(shader3D, "uModel", elevTop);
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
                 
-                // Vertical walls use wallVAO - EXTERIOR facing (normals pointing outward)
+                // Vertical walls use wallVAO - exterior facing (normals pointing outward)
                 glBindVertexArray(wallVAO);
                 glBindTexture(GL_TEXTURE_2D, elevatorWallTex);
                 
@@ -519,10 +518,10 @@ int main()
                 setShaderMat4(shader3D, "uProjection", projection);
                 setShaderVec3(shader3D, "uLightPos", elevatorLightPos);
                 setShaderVec3(shader3D, "uViewPos", camera.position);
-                setShaderVec3(shader3D, "uLightColor", Vec3(1.0f, 0.95f, 0.9f));  // Warm white light
-                setShaderFloat(shader3D, "uAmbientStrength", 0.2f);  // Low ambient for realistic lighting
+                setShaderVec3(shader3D, "uLightColor", Vec3(1.0f, 0.95f, 0.9f));    // Warm white light
+                setShaderFloat(shader3D, "uAmbientStrength", 0.2f);                 // Low ambient for realistic lighting
                 setShaderFloat(shader3D, "uConstant", lightConstant);
-                setShaderFloat(shader3D, "uLinear", 0.14f);  // Slightly stronger falloff for smaller space
+                setShaderFloat(shader3D, "uLinear", 0.14f);                         // Slightly stronger falloff for smaller space
                 setShaderFloat(shader3D, "uQuadratic", 0.07f);
                 setShaderFloat(shader3D, "uAlpha", 1.0f);
                 setButtonLightUniforms(shader3D);
@@ -595,7 +594,7 @@ int main()
                 setShaderVec3(shader3D, "uLightPos", elevatorLightPos);
                 setShaderVec3(shader3D, "uViewPos", camera.position);
                 setShaderVec3(shader3D, "uLightColor", Vec3(1.0f, 0.95f, 0.9f));
-                setShaderFloat(shader3D, "uAmbientStrength", 0.9f);  // Lamp itself is bright
+                setShaderFloat(shader3D, "uAmbientStrength", 0.9f); 
                 setShaderFloat(shader3D, "uConstant", lightConstant);
                 setShaderFloat(shader3D, "uLinear", 0.14f);
                 setShaderFloat(shader3D, "uQuadratic", 0.07f);
@@ -666,7 +665,7 @@ int main()
                 
                 float lineHeight = 0.055f;
                 float textWidth = 0.38f;
-                float textHeight = 0.06f;  // Increased from 0.04f to 0.06f for better aspect ratio
+                float textHeight = 0.06f;  
                 
                 // === Back-face culling status (top line) ===
                 float cullY = statusBgY + lineHeight / 2.0f;
@@ -712,7 +711,7 @@ int main()
                 }
             }
             
-            // Render student info in bottom-right corner (200x80 pixels)
+            // Render student info in bottom-right corner
             float infoWidth = 200.0f / (float)winWidth * 2.0f;   // Convert pixels to NDC
             float infoHeight = 80.0f / (float)winHeight * 2.0f;  // Convert pixels to NDC
             float infoPosX = 1.0f - infoWidth / 2.0f - 0.02f;    // Right side with small margin
@@ -956,9 +955,9 @@ void updateElevator(Elevator& elevator, Person& person, float deltaTime)
             elevator.y = targetY;
             elevator.currentFloor = elevator.targetFloor;
             elevator.moving = false;
-            elevator.doorsOpen = true;  // Open doors when arriving
-            elevator.doorTimer = 0.0f;  // Reset timer
-            elevator.doorExtendUsed = false;  // Reset extension flag
+            elevator.doorsOpen = true;           // Open doors when arriving
+            elevator.doorTimer = 0.0f;           // Reset timer
+            elevator.doorExtendUsed = false;     // Reset extension flag
             
             if (ventilationActive) {
                 ventilationActive = false;
@@ -999,7 +998,7 @@ void updateCamera(Camera& camera, Person& person, float deltaTime)
             float elevMinZ = ELEVATOR_Z - ELEVATOR_SIZE/2 + margin;
             float elevMaxZ = ELEVATOR_Z + ELEVATOR_SIZE/2 - margin;
             
-            // Can only exit if doors are open AND elevator is not moving
+            // Can only exit if doors are open and elevator is not moving
             if (globalElevator && globalElevator->doorsOpen && !globalElevator->moving && newPos.z > elevMaxZ) {
                 person.inElevator = false;
                 person.currentFloor = globalElevator->currentFloor;
@@ -1026,7 +1025,7 @@ void updateCamera(Camera& camera, Person& person, float deltaTime)
             if (newPos.z > FLOOR_DEPTH/2 - margin) newPos.z = FLOOR_DEPTH/2 - margin;
             if (newPos.z < -FLOOR_DEPTH/2 + margin) newPos.z = -FLOOR_DEPTH/2 + margin;
             
-            // ELEVATOR COLLISION - block movement into elevator area if elevator is on same floor
+            // Elevator collision - block movement into elevator area if elevator is on same floor
             if (globalElevator && globalElevator->currentFloor == person.currentFloor) {
                 float elevMargin = 0.3f;
                 float elevMinX = ELEVATOR_X - ELEVATOR_SIZE/2 - elevMargin;
@@ -1072,7 +1071,7 @@ void updateCamera(Camera& camera, Person& person, float deltaTime)
                 }
             }
             
-            // PLANT COLLISION - block movement through plants
+            // Plant collision - block movement through plants
             float cornerOffset = 1.5f;
             float plantRadius = 0.8f;
             Vec3 oldPos = person.position;
